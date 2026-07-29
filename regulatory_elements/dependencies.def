@@ -1,0 +1,106 @@
+Bootstrap: docker
+From: ubuntu:latest
+
+# ==============================================================================
+# LABELS
+# Metadata stored inside the container image inspectable via 'apptainer inspect'.
+# ==============================================================================
+%labels
+    Author KevinCurrin
+    Version 1.0
+    Description Tools used in the pipeline to harmonize regulatory elements
+
+# ==============================================================================
+# ENVIRONMENT
+# Environment variables exported at runtime (whenever 'apptainer run/exec' is used).
+# ==============================================================================
+%environment
+    # Add our Conda environment binary directory to the system PATH.
+    # This makes tools like 'samtools', 'bedtools', 'macs2', 'python', and 'R'
+    # accessible immediately without needing to run 'conda activate'.
+    export PATH="/opt/conda/bin:$PATH"
+
+    # Set the locale to standard POSIX/C.
+    # This prevents character encoding errors, silences Perl/Python locale warnings,
+    # and guarantees consistent ASCII byte-by-byte text sorting across systems.
+    export LC_ALL=C
+
+# ==============================================================================
+# POST-INSTALLATION SCRIPT
+# Runs inside the container during 'apptainer build' to install all software.
+# ==============================================================================
+%post
+    # Prevent interactive prompts (e.g., timezone selection) from pausing the build.
+    export DEBIAN_FRONTEND=noninteractive
+
+    # --------------------------------------------------------------------------
+    # STEP 1: Update APT package indices and install minimal system utilities.
+    # - wget/curl: For downloading external binaries and scripts.
+    # - ca-certificates: Required for secure HTTPS requests.
+    # - bzip2: Required by tar/micromamba for extracting archives.
+    # - git: Useful for tracking code and versioning within python/R packages.
+    # - procps: Provides 'ps', 'top', etc., which workflow runners like Nextflow
+    #   and Snakemake use to monitor container resource usage on HPC nodes.
+    # --------------------------------------------------------------------------
+    apt-get update && apt-get install -y --no-install-recommends \
+        wget \
+        curl \
+        ca-certificates \
+        bzip2 \
+        git \
+        procps \
+        && apt-get clean \
+        && rm -rf /var/lib/apt/lists/*
+
+    # --------------------------------------------------------------------------
+    # STEP 2: Download and install the standalone Micromamba binary.
+    # Micromamba is a statically linked C++ binary for Conda/Mamba environments.
+    # Moving it to /usr/local/bin makes it available globally during the build.
+    # --------------------------------------------------------------------------
+    cd /tmp
+    curl -L https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xj bin/micromamba
+    mv bin/micromamba /usr/local/bin/micromamba
+
+    # --------------------------------------------------------------------------
+    # STEP 3: Create the root Conda environment and install target tools.
+    # - '-p /opt/conda': Installs binaries into system-wide /opt/conda instead
+    #   of user home directories, avoiding HPC user permission conflicts.
+    # - '-c conda-forge -c bioconda': Specifies channel priority order.
+    # - 'clean --all --yes': Removes cached tarballs and packages to shrink the
+    #   final Apptainer image size (.sif).
+    # --------------------------------------------------------------------------
+    /usr/local/bin/micromamba create -y -p /opt/conda -c conda-forge -c bioconda \
+        python=3.11.15 \
+        r-base=4.6.1 \
+        samtools=1.24 \
+        bedtools=2.31.1 \
+        macs3=3.0.4 \
+        && /usr/local/bin/micromamba clean --all --yes
+
+# ==============================================================================
+# TEST SECTION
+# Validation commands executed automatically at the end of 'apptainer build'.
+# If any command fails, the build aborts before saving an invalid SIF file.
+# ==============================================================================
+%test
+    # Ensure PATH includes our installed tools during the test run
+    export PATH="/opt/conda/bin:$PATH"
+
+    # Verify each binary exists and executes cleanly
+    samtools --version
+    bedtools --version
+    macs3 --version
+    python --version
+    R --version
+
+# ==============================================================================
+# RUNSCRIPT
+# Defines the entrypoint command when executing the container using 'apptainer run'.
+# 'exec "$@"' passes all CLI arguments directly to the container shell environment.
+# ==============================================================================
+%runscript
+    exec "$@"
+
+%help
+    This container consists of bioinformatics tools used in the regulatory element harmonization nextflow pipeline. The path to the image file is already in the nextflow.config file, so the user does not need to take any additional steps to incorporate this image in the nextflow pipeline.
+    
