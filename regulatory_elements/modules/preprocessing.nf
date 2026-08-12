@@ -36,7 +36,14 @@ process bamToBed {
 
 	"""
 
+	# Convert the bam file to bed and shift the read 5' ends to be the center of the Tn5 cut site.
+	# Note that 4 was subtracted from the 5' end of - strand reads instead of 5 because the end coordinates of BED files are 1-based, not 0-based
 	bamToBed -i ${bam_file} \
+	| awk 'BEGIN {FS = "\t"};
+	{if(\$6 == "+") {
+	print \$1"\t"\$2+4"\t"\$3"\t"\$4"\t"\$5"\t"\$6}
+	if(\$6 == "-") {
+	print \$1"\t"\$2"\t"\$3-4"\t"\$4"\t"\$5"\t"\$6}}' \
 	| gzip -c > alignments.bed.gz
 
 	"""
