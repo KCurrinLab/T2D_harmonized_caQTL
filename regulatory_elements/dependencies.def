@@ -75,6 +75,9 @@ From: ubuntu:latest
         samtools=1.24 \
         bedtools=2.31.1 \
         macs3=3.0.4 \
+        ucsc-bedGraphToBigWig \
+        ucsc-bigWigAverageOverBed \
+        deeptools=3.5.6 \
         && /usr/local/bin/micromamba clean --all --yes
 
 # ==============================================================================
@@ -92,7 +95,9 @@ From: ubuntu:latest
     macs3 --version
     python --version
     R --version
-
+    bedGraphToBigWig
+    bigWigAverageOverBed
+    deeptools --version
 # ==============================================================================
 # RUNSCRIPT
 # Defines the entrypoint command when executing the container using 'apptainer run'.
