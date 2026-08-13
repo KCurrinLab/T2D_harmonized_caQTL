@@ -24,10 +24,12 @@ def main():
 			start = int(data[1])
 			end = int(data[2])
 			name = data[3]
+			max_signal = data[4]
+			# Max normalized signal in the peak is now used for peak tie breaker instead of minusLog10PVal
 			# -log10 pval, so higher is more significant
 			# Keep it as a string so no weird conversions happen in the output file.
 			# I will sort on the float of the pval later
-			pval = data[4]
+			#pval = data[4]
 			# Cluster ID from bedtools cluster
 			cluster_id = data[-1]
 
@@ -40,7 +42,7 @@ def main():
 				current_cluster_records = []
 
 			current_cluster_id = cluster_id
-			current_cluster_records.append((chrom, start, end, name, pval))
+			current_cluster_records.append((chrom, start, end, name, max_signal))
 
 		# Process the final cluster
 		if current_cluster_records:
@@ -54,17 +56,16 @@ def main():
 def prune_cluster(cluster_records):
 	"""
 	Greedy elimination of overlapping intervals within a single cluster.
-	cluster_records: list of tuples (chrom, start, end, name, pvalue_neglog10)
+	cluster_records: list of tuples (chrom, start, end, name, max signal)
 	"""
 
-	# Sort regions in this cluster by p-value (descending order)
-	# Assumes stronger p-value = higher numerical value (e.g. -log10 p-value)
+	# Sort regions in this cluster by max normalized signal (descending order)
 	cluster_records.sort(key=lambda x: float(x[4]), reverse=True)
 
 	kept_regions = []
 
 	for candidate in cluster_records:
-		c_chrom, c_start, c_end, c_name, c_pval = candidate
+		c_chrom, c_start, c_end, c_name, c_signal = candidate
 
 		# Check if candidate overlaps with any already selected (stronger) region
 		overlaps = False

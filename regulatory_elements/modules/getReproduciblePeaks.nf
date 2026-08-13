@@ -22,14 +22,16 @@ process getReproduciblePeaks {
 	s_name=\${sample_array[\$i]}
 	peak_file=\${peak_array[\$i]}
 
-	zcat \${peak_file} \
-	| awk -v s=\${s_name} 'BEGIN {FS = "\t"; OFS = "\t"};
-	{print \$0,s}' \
+	# bedtools 2.31.1 thinks 12 column bed files are in bed12 format, which is not what I want.
+	# So we will use bed4 for merging
+	zgrep -v "#chr" \${peak_file} \
+	| awk -v s=\${s_name} 'BEGIN {FS = "\\t"; OFS = "\\t"};
+	{print \$1,\$2,\$3,s}' \
 	>> temp.bed
 	done
 
 	sort -k 1,1 -k 2,2n temp.bed \
-	| mergeBed -i stdin -c 11 -o count_distinct,distinct \
+	| mergeBed -i stdin -c 4 -o count_distinct,distinct \
 	> union_peaks.bed
 
 	awk -v n=${min_samples} '{if(\$4 >= n) {

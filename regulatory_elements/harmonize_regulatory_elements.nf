@@ -2,6 +2,9 @@ nextflow.enable.dsl=2
 
 include { filterBam; bamToBed } from './modules/preprocessing.nf'
 include { callPeaks } from './modules/callPeaks.nf'
+include { getNormalizedSignal } from './modules/getNormalizedSignal.nf'
+include { addSignalToPeaks } from './modules/addSignalToPeaks.nf'
+include { getAverageSignal } from './modules/getAverageSignal.nf'
 include { getReproduciblePeaks } from './modules/getReproduciblePeaks.nf'
 include { harmonizeElements } from './modules/harmonizeElements.nf'
 
@@ -40,12 +43,22 @@ workflow {
 	filterBam(bam_ch,params.primary_nuclear_chr)
 	bamToBed(filterBam.out)
 	callPeaks(bamToBed.out,params.macs_genome,params.exclude_regions)
+	getNormalizedSignal(bamToBed.out,params.chrom_sizes)
+
+	addSignalToPeaks(callPeaks.out.join(getNormalizedSignal.out))
+
+	if(params.output_signal) {
+		averageSignal_in_ch = getNormalizedSignal.out.map { sample, file -> file }
+		.collect()
+
+		getAverageSignal(averageSignal_in_ch,params.out_dir,params.experiment_name)
+		}
 
 	if(params.get_reproducible_peaks == "yes") {
 //		reproducible_in_ch = callPeaks.out.collect(flat: false)
 //		.map { it.transpose() }
 
-		reproducible_in_ch = callPeaks.out
+		reproducible_in_ch = addSignalToPeaks.out
 		.toList()
 		.map { list -> 
 		def samples = list.collect { it[0] }
@@ -58,7 +71,7 @@ workflow {
 	}
 
 	else if(params.get_reproducible_peaks == "no") {
-		harmonize_in_ch = callPeaks.out.map { sample, file -> file }
+		harmonize_in_ch = addSignalToPeaks.out.map { sample, file -> file }
 		.collect()
 
 		harmonizeElements(harmonize_in_ch,params.chrom_sizes,params.summit_extend,params.out_dir,params.experiment_name)

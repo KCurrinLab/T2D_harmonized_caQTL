@@ -16,12 +16,13 @@ process harmonizeElements {
 
 	> combined_extended_summits.bed
 
+	# Column 11 for ranking by max normalized signal, column 8 for ranking by minusLog10PVal
 	peak_array=(${peak_list.join(' ')})
 	for peak_file in "\${peak_array[@]}"; do
-	zcat \${peak_file} \
-	| awk 'BEGIN {FS = "\t"; OFS = "\t"};
+	zgrep -v "#chr" \${peak_file} \
+	| awk 'BEGIN {FS = "\\t"; OFS = "\\t"};
 	{summit = \$2 + \$10;
-	print \$1,summit,(summit+1),\$4,\$8}' \
+	print \$1,summit,(summit+1),\$4,\$11}' \
 	| bedtools slop -g ${chrom_sizes} -b ${summit_extend} -i stdin \
 	>> combined_extended_summits.bed
 
