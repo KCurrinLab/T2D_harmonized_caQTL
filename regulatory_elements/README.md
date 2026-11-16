@@ -31,7 +31,7 @@ apptainer build dependencies.sif dependencies.def
 
 ```bash
 
-harmonize_RE="<path_where_github_repo_was_cloned>/T2D_harmonized_caQTL/regulatory_elements/files/"
+harmonize_RE="<path_where_github_repo_was_cloned>/T2D_harmonized_caQTL/regulatory_elements/"
 
 ```
 
