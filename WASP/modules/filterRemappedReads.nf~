@@ -1,0 +1,43 @@
+process filterRemappedReads {
+
+	input:
+	tuple val(sample_name), path(remapped_bam), path(remapped_bam_index)
+	path bam_to_remap
+	path bam_not_overlapping_geno
+	val out_dir
+
+	publishDir "${out_dir}", mode: 'copy'
+
+	output:
+	path "${sample_name}_WASP_filtered_sorted.bam"
+	path "${sample_name}_WASP_filtered_sorted.bam.bai"
+	path "filter_remapped_reads_${sample_name}.out"
+
+	script:
+	"""
+
+	python \${WASP}/filter_remapped_reads.py \
+${bam_to_remap} \
+	${remapped_bam} \
+	keep_remapped.bam \
+	2> filter_remapped_reads_${sample_name}.out
+
+
+	# Create a merged BAM containing [1] reads that did
+	# not need remapping [2] filtered remapped reads
+	samtools merge --threads 9 \
+	merged.bam \
+	${bam_not_overlapping_geno} \
+	keep_remapped.bam \
+
+	# sort the merged bam
+	samtools sort --threads 9 \
+	-o ${sample_name}_WASP_filtered_sorted.bam \
+	merged.bam
+
+	# index the bam file
+	samtools index ${sample_name}_WASP_filtered_sorted.bam
+
+	"""
+
+}

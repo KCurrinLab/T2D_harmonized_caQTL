@@ -1,0 +1,33 @@
+params {
+	// The folder containing the VCF files
+	VCF_dir = ""
+	// The file glob for the chromosome-separated VCF files, such as "chr*.vcf.gz".
+	VCF_glob = ""
+	//The path to the folder with the index
+	genome_index_dir = ""
+	// The prefix of the index
+	//The index passed to the aligner will be the combination of genome_index_dir and genome_index_prefix
+	genome_index_prefix = ""
+	// The folder containing the aligner executible
+	aligner_dir = ""
+	// The aligner executible
+	aligner_name = ""
+	chrom_sizes = "${projectDir}/files/hg38.chrom.sizes"
+	primary_nuclear_chr = "${projectDir}/files/hg38_primary_nuclear_chr.bed"
+}
+
+process {
+
+	executor = 'slurm'
+	cpus = 10
+	memory = '100GB'
+	time = '1d'
+
+	container = "${projectDir}/dependencies.sif"
+}
+
+apptainer {
+	enabled = true
+	autoMounts = true
+	runOptions = "--bind ${params.VCF_dir}:${params.VCF_dir},${params.aligner_dir}:${params.aligner_dir},${params.genome_index_dir}:${params.genome_index_dir} --env aligner_dir=${params.aligner_dir},genome_index_dir=${params.genome_index_dir}"
+}

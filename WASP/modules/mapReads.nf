@@ -1,0 +1,51 @@
+process mapReads {
+
+	input:
+	val sample_name
+	path r1_fastq
+	path r2_fastq
+	val aligner_dir
+	val aligner_name
+	val genome_index_dir
+	val genome_index_prefix
+
+	output:
+	tuple val(sample_name), path("remapped_sorted.bam"), path("remapped_sorted.bam.bai")
+
+
+	// Edit the below alignment command to use the aligner and parameters used in your initial alignment.
+	// My command for liver is shown below for reference.
+	// The path to your aligner is accessed using ${aligner_dir}/${aligner_name}
+	// The path to your genome index is ${genome_index_dir}/${genome_index_prefix}
+	// The two fastq files are accessed using ${r1_fastq} and ${r2_fastq}
+
+	// *note, please keep the samtools filtering, sort and index commands below because they are needed for the pipeline.
+
+	script:
+	"""
+
+	### Change the below command to match your alignment command
+	${aligner_dir}/${aligner_name} --threads 9 \
+	-x ${genome_index_dir}/${genome_index_prefix} \
+	--minins 36 --maxins 1000 \
+	--no-mixed --no-discordant --no-unal \
+	-1 ${r1_fastq} \
+	-2 ${r2_fastq} \
+	| samtools view --threads 9 -bh -o remapped.bam
+
+	### Do not change these commands
+	samtools view \
+	-h -b -f 3 -F 4 -F 8 -F 256 -F 2048 -q 30 \
+	--threads 9 \
+	-o remapped_filtered.bam \
+	remapped.bam
+
+	samtools sort --threads 9 \
+	-o remapped_sorted.bam \
+	remapped_filtered.bam
+
+	samtools index remapped_sorted.bam
+
+	"""
+
+}

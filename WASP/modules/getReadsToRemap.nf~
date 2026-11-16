@@ -1,0 +1,33 @@
+process getReadsToRemap {
+
+	input:
+	tuple val(sample_name), path(bam_file), path(bam_index)
+	tuple path(haplotypes), path(snp_index), path(snp_tab)
+	val out_dir
+
+	publishDir "${out_dir}", mode: 'copy', pattern: 'find_intersecting_snps*.out'
+
+	output:
+	val sample_name, emit: sample_name
+	path "${bam_file.baseName}.remap.fq1.gz", emit: r1_fastq
+	path "${bam_file.baseName}.remap.fq2.gz", emit: r2_fastq
+	path "${bam_file.baseName}.to.remap.bam", emit: bam_to_remap
+path "${bam_file.baseName}.keep.bam", emit: bam_not_overlapping_geno
+
+
+	script:
+	"""
+
+	python \${WASP}/find_intersecting_snps.py \
+	--is_paired_end \
+	--is_sorted \
+	--output_dir . \
+	--snp_tab ${snp_tab} \
+	--snp_index ${snp_index} \
+	--haplotype ${haplotypes} \
+	${bam_file} \
+	2> find_intersecdting_snps_${sample_name}.out
+
+	"""
+
+}
